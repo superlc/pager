@@ -1,0 +1,130 @@
+/*
+	param :
+	{
+		stage : 'stage'
+		wrapper : '.wrapper',
+		item : '.item',
+		delta : 20,//手势移动多少进行屏幕滚动
+	}
+*/
+var Pager = function(param){
+	this.stage = document.getElementById(param.stage);
+	this.wrapper = document.querySelector(param.wrapper);
+	this.items = document.querySelectorAll(param.wrapper + ' ' + param.item);
+	this.max = this.items.length;
+	//滚动前后的回调函数
+	this.beforeScroll = param.beforeScroll || null;
+	this.afterScroll = param.afterScroll || null;
+	//拖动的最大临界值
+	this.delta = param.delta || 30;
+	//切屏动画时间
+	this.duration = param.duration || 300;
+	//当前页数
+	this.page_index = 1;
+	//窗口的宽和高
+	this.window_width = window.innerWidth;
+	this.window_height = window.innerHeight;
+	//记录初始手指按下的值
+	this.s_point = {
+		x : 0,
+		y : 0
+	};
+	this.e_point = {
+		x : 0,
+		y : 0
+	};
+	//保存一些回调函数
+	this.edgeCharge = param.edgeCharge || null;
+
+	//初始化开始
+	this._init();
+};
+Pager.prototype = {
+	_init : function(){
+		this._initItems();
+		var st = this._getCss(this.wrapper,'transform');
+		var s_point = this.s_point;
+		var e_point = this.e_point;
+		var _this = this;
+		this.stage.addEventListener('touchstart',function(e){
+			e.preventDefault();
+			//保存按下点的坐标
+			s_point.x = e.touches[0].pageX;
+			s_point.y = e.touches[0].pageY;
+
+			//预想本次会产生移动，获取触摸时的translateY值
+			st = _this._getCss(_this.wrapper,'transform');
+		});
+		this.stage.addEventListener('touchmove',function(e){
+			e.preventDefault();
+			//保存手指所在的点的坐标
+			e_point.x = e.touches[0].pageX;
+			e_point.y = e.touches[0].pageY;
+
+			//计算拖动位移
+			var delta = e_point.y - s_point.y;
+
+			if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
+				return;
+			}
+			//手势跟随
+			_this.wrapper.style.webkitTransform = 'translateY(' + (st + delta) + 'px)';
+		});
+		this.stage.addEventListener('touchend',function(e){
+			e.preventDefault();
+			//保存手指所在的点的坐标
+			e_point.x = e.changedTouches[0].pageX;
+			e_point.y = e.changedTouches[0].pageY;
+
+			var delta = e_point.y - s_point.y;
+			//边界判断
+			if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
+				return;
+			}
+			//拖动距离超过临界距离
+			if(Math.abs(delta) > _this.delta){
+				//判断是向上还是向下
+				if(delta > 0){
+					_this.page_index--;
+				}else{
+					_this.page_index++;
+				}
+				//给容器添加moving类，切屏
+			}
+			_this._scroll(_this.page_index,_this.beforeScroll,_this.afterScroll);
+		});
+	},
+	_getCss : function(dom,cssName){
+		//获取元素的应用的样式的值
+		var styles = window.getComputedStyle(dom,null);
+		var scn = styles.transform;
+		//取出样式传中的数值
+		var stop = (scn.match(/-?\d+/g) || [0]).pop();
+		return parseInt(stop);
+	},
+	_initItems : function(){
+		//初始化舞台、容器及每一页的dom的宽高
+		this.stage.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;';
+		this.wrapper.style.cssText = 'position:absolute;left:0;top:0;-webkit-transform:tranlateY(0);';
+		for(var i=0;i<this.max;i++){
+			this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;';
+		}
+	},
+	_scroll : function(index,beforeScroll,afterScroll){
+		this.wrapper.classList.add('moving');
+		this.wrapper.style.webkitTransform = 'translateY(' + (1 - index)*this.window_height + 'px)';
+		//滚动之前执行的函数
+		if(beforeScroll){
+			beforeScroll(this.page_index);
+		}
+		var _this = this;
+		var timer = setTimeout(function(){
+            clearTimeout(timer);
+            _this.wrapper.classList.remove('moving');
+            //滚动之后执行的函数
+            if(afterScroll){
+            	afterScroll(_this.page_index);
+            }
+        },this.duration);
+	}
+};
