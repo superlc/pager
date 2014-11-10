@@ -1,16 +1,34 @@
 /*
 	param :
 	{
-		stage : 'stage'
+		stage : 'stage',
 		wrapper : '.wrapper',
 		item : '.item',
+		duration : 300,//切屏的动画时间
+		animFunc : '',//css3切屏动画缓动函数
 		delta : 20,//手势移动多少进行屏幕滚动
+		hMove : true,//设置滑动的方向，false为默认值表示垂直滑动
+		stage_width : 200,//窗口宽度
+		stage_heihgt : 200,//窗口高度
+		bubble : false,//是否允许触摸时间冒泡
+		beforeScroll : function(index){
+			//滚动之前的处理方法
+		},
+		afterScroll : function(index){
+			//滚动之后的处理方法
+		}
 	}
 */
 var Pager = function(param){
 	this.stage = document.getElementById(param.stage);
 	this.wrapper = document.querySelector(param.wrapper);
 	this.items = document.querySelectorAll(param.wrapper + ' ' + param.item);
+	//切屏窗口的宽和高
+	this.stage_width = param.stage_width || window.innerWidth;
+	this.stage_heihgt = param.stage_height || window.innerHeight;
+	//水平或垂直方向切屏的标志,默认关闭水平切屏
+	this.hMove = param.hMove || false;
+	//计算最大页数
 	this.max = this.items.length;
 	//滚动前后的回调函数
 	this.beforeScroll = param.beforeScroll || null;
@@ -19,11 +37,15 @@ var Pager = function(param){
 	this.delta = param.delta || 30;
 	//切屏动画时间
 	this.duration = param.duration || 300;
+	//是否允许触摸时间冒泡
+	this.bubble = param.bubble || true;
 	//当前页数
 	this.page_index = 1;
+	//切屏的缓动函数
+	this.animFunc = param.animFunc || 'cubic-bezier(.1,.46,.1,.92)';
 	//窗口的宽和高
-	this.window_width = window.innerWidth;
-	this.window_height = window.innerHeight;
+	this.window_width = this.stage_width;
+	this.window_height = this.stage_heihgt;
 	//记录初始手指按下的值
 	this.s_point = {
 		x : 0,
@@ -33,57 +55,96 @@ var Pager = function(param){
 		x : 0,
 		y : 0
 	};
-	//保存一些回调函数
-	this.edgeCharge = param.edgeCharge || null;
-
+	//moving时的lock锁，在moving的时候滑动都失效
+	this.lock = false;
+	//存储浏览器类型的对应情况
+	this.prefixes = {
+		msie : "-ms-",
+		mozilla : "-moz-",
+		webkit : "-webkit-",
+		opera : "-o-"
+	};
+	this.preStyleName = {
+		msie : "ms",
+		mozilla : "moz",
+		webkit : "webkit",
+		opera : "o"
+	};
+	//浏览器前缀索引
+	this.ptype = null;
 	//初始化开始
 	this._init();
 };
 Pager.prototype = {
 	_init : function(){
 		this._initItems();
-		var st = this._getCss(this.wrapper,'transform');
+		var st = this._getTransform(this.wrapper);
 		var s_point = this.s_point;
 		var e_point = this.e_point;
 		var _this = this;
 		this.stage.addEventListener('touchstart',function(e){
 			e.preventDefault();
+			_this._stopBubble(e);
+			if(_this.lock)
+				return;
 			//保存按下点的坐标
 			s_point.x = e.touches[0].pageX;
 			s_point.y = e.touches[0].pageY;
 
 			//预想本次会产生移动，获取触摸时的translateY值
-			st = _this._getCss(_this.wrapper,'transform');
+			st = _this._getTransform(_this.wrapper);
 		});
 		this.stage.addEventListener('touchmove',function(e){
 			e.preventDefault();
+			_this._stopBubble(e);
+			if(_this.lock)
+				return;
 			//保存手指所在的点的坐标
 			e_point.x = e.touches[0].pageX;
 			e_point.y = e.touches[0].pageY;
+			//如果是纵向切屏
+			var delta;
+			if(!_this.hMove){
+				//计算拖动位移
+				delta = e_point.y - s_point.y;
 
-			//计算拖动位移
-			var delta = e_point.y - s_point.y;
-
-			if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
-				return;
+				if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
+					return;
+				 }
+				//手势跟随
+				_this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transform'] = 'translateY(' + (st + delta) + 'px)';
 			}
-			//手势跟随
-			_this.wrapper.style.webkitTransform = 'translateY(' + (st + delta) + 'px)';
+			else{
+				//计算拖动位移
+				delta = e_point.x - s_point.x;
+				if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
+					return;
+				}
+				//手势跟随
+				_this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transform'] = 'translateX(' + (st + delta) + 'px)';
+			}
 		});
 		this.stage.addEventListener('touchend',function(e){
 			e.preventDefault();
+			_this._stopBubble(e);
+			if(_this.lock)
+				return;
 			//保存手指所在的点的坐标
 			e_point.x = e.changedTouches[0].pageX;
 			e_point.y = e.changedTouches[0].pageY;
-
-			var delta = e_point.y - s_point.y;
+			var delta;
+			if(!_this.hMove){
+				delta = e_point.y - s_point.y;
+			}else{
+				delta = e_point.x - s_point.x;
+			}
 			//边界判断
 			if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
 				return;
 			}
 			//拖动距离超过临界距离
 			if(Math.abs(delta) > _this.delta){
-				//判断是向上还是向下
+				//判断是上一页还是下一页
 				if(delta > 0){
 					_this.page_index--;
 				}else{
@@ -94,25 +155,50 @@ Pager.prototype = {
 			_this._scroll(_this.page_index,_this.beforeScroll,_this.afterScroll);
 		});
 	},
-	_getCss : function(dom,cssName){
+	_getTransform : function(dom){
 		//获取元素的应用的样式的值
-		var styles = window.getComputedStyle(dom,null);
-		var scn = styles.transform;
+		//var styles = window.getComputedStyle(dom,null);
+		var scn = this.wrapper.style[this.preStyleName[this.ptype] + 'Transform'];
 		//取出样式传中的数值
 		var stop = (scn.match(/-?\d+/g) || [0]).pop();
 		return parseInt(stop);
 	},
+	_getBrowserInfo : function(){
+		var info = window.navigator.userAgent.toLowerCase();
+		if(info.indexOf('applewebkit') > -1){
+			this.ptype = 'webkit';
+		}else if(info.indexOf('trident') > -1){
+			this.ptype = 'msie';
+		}else if(info.indexOf('gecko') > -1 && info.indexOf('KHTML') == -1){
+			this.ptype = 'mozilla';
+		}else if(info.indexOf('presto') > -1){
+			this.ptype = 'opera';
+		}
+	},
 	_initItems : function(){
+		this._getBrowserInfo();
+		
 		//初始化舞台、容器及每一页的dom的宽高
-		this.stage.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;';
-		this.wrapper.style.cssText = 'position:absolute;left:0;top:0;-webkit-transform:tranlateY(0);';
-		for(var i=0;i<this.max;i++){
-			this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;';
+		this.stage.style.cssText = 'position:fixed;left:0;top:0;width:'+ this.stage_width +'px;height:'+this.stage_heihgt+'px;overflow:hidden;';
+		if(!this.hMove){
+			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';width:100%;height:'+this.max*this.stage_heihgt+'px';
+			for(var i=0;i<this.max;i++){
+				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;left:0;top:'+i*this.window_height+'px';
+			}
+		}else{
+			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateX(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';height:100%;width:'+this.stage_width+'px';
+			for(var i=0;i<this.max;i++){
+				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;top:0;left:'+i*this.window_width+'px';
+			}
 		}
 	},
 	_scroll : function(index,beforeScroll,afterScroll){
-		this.wrapper.classList.add('moving');
-		this.wrapper.style.webkitTransform = 'translateY(' + (1 - index)*this.window_height + 'px)';
+		this.lock = true;
+		if(!this.hMove){
+			this.wrapper.style[this.preStyleName[this.ptype] + 'Transform'] = 'translateY(' + (1 - index)*this.window_height + 'px)';
+		}else{
+			this.wrapper.style[this.preStyleName[this.ptype] + 'Transform'] = 'translateX(' + (1 - index)*this.window_width + 'px)';
+		}
 		//滚动之前执行的函数
 		if(beforeScroll){
 			beforeScroll(this.page_index);
@@ -120,11 +206,23 @@ Pager.prototype = {
 		var _this = this;
 		var timer = setTimeout(function(){
             clearTimeout(timer);
-            _this.wrapper.classList.remove('moving');
             //滚动之后执行的函数
             if(afterScroll){
             	afterScroll(_this.page_index);
             }
+            _this.lock = false;
         },this.duration);
-	}
+	},
+	_stopBubble : function(e) {
+		//如果设置为不允许冒泡，则组织冒泡事件
+		if(!this.bubble){
+			//如果提供了事件对象，则这是一个非IE浏览器
+	        if ( e && e.stopPropagation )
+	            //因此它支持W3C的stopPropagation()方法
+	            e.stopPropagation();
+	        else
+	            //否则，我们需要使用IE的方式来取消事件冒泡
+	            window.event.cancelBubble = true;
+		}
+    }
 };
