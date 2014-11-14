@@ -181,12 +181,14 @@ Pager.prototype = {
 		//初始化舞台、容器及每一页的dom的宽高
 		this.stage.style.cssText = 'position:fixed;left:0;top:0;width:'+ this.stage_width +'px;height:'+this.stage_heihgt+'px;overflow:hidden;';
 		if(!this.hMove){
-			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';width:100%;height:'+this.max*this.stage_heihgt+'px';
+			//this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';width:100%;height:'+this.max*this.stage_heihgt+'px';
+			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);width:100%;height:'+this.max*this.stage_heihgt+'px';
 			for(var i=0;i<this.max;i++){
 				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;left:0;top:'+i*this.window_height+'px';
 			}
 		}else{
-			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateX(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';height:100%;width:'+this.stage_width+'px';
+			//this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateX(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';height:100%;width:'+this.stage_width+'px';
+			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);width:100%;height:'+this.max*this.stage_heihgt+'px';
 			for(var i=0;i<this.max;i++){
 				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;top:0;left:'+i*this.window_width+'px';
 			}
@@ -194,6 +196,9 @@ Pager.prototype = {
 	},
 	_scroll : function(index,beforeScroll,afterScroll){
 		this.lock = true;
+		//固定挪动之前做动画缓动函数设置
+		this.wrapper.style[this.preStyleName[this.ptype] + 'Transition'] = 'all '+this.duration/1000+'s '+this.animFunc;
+
 		if(!this.hMove){
 			this.wrapper.style[this.preStyleName[this.ptype] + 'Transform'] = 'translateY(' + (1 - index)*this.window_height + 'px)';
 		}else{
@@ -210,6 +215,7 @@ Pager.prototype = {
             if(afterScroll){
             	afterScroll(_this.page_index);
             }
+            _this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transition'] = '';
             _this.lock = false;
         },this.duration);
 	},
