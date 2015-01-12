@@ -55,8 +55,11 @@ var Pager = function(param){
 		x : 0,
 		y : 0
 	};
+	//moving时的标志
+	this.isDragging = false;
 	//moving时的lock锁，在moving的时候滑动都失效
 	this.lock = false;
+
 	//存储浏览器类型的对应情况
 	this.prefixes = {
 		msie : "-ms-",
@@ -72,6 +75,9 @@ var Pager = function(param){
 	};
 	//浏览器前缀索引
 	this.ptype = null;
+	//计时器
+	this.start_time = null;
+	this.end_time = null;
 	//初始化开始
 	this._init();
 };
@@ -85,6 +91,8 @@ Pager.prototype = {
 		this.stage.addEventListener('touchstart',function(e){
 			e.preventDefault();
 			_this._stopBubble(e);
+			_this.start_time = Date.now();
+			console.log(_this.start_time);
 			if(_this.lock)
 				return;
 			//保存按下点的坐标
@@ -97,8 +105,9 @@ Pager.prototype = {
 		this.stage.addEventListener('touchmove',function(e){
 			e.preventDefault();
 			_this._stopBubble(e);
-			if(_this.lock)
+			if(_this.lock){
 				return;
+			}
 			//保存手指所在的点的坐标
 			e_point.x = e.touches[0].pageX;
 			e_point.y = e.touches[0].pageY;
@@ -107,28 +116,42 @@ Pager.prototype = {
 			if(!_this.hMove){
 				//计算拖动位移
 				delta = e_point.y - s_point.y;
-
+				if(_this.isDragging === false && delta !== 0){
+					_this.isDragging = true;
+				}
 				if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
 					return;
 				 }
 				//手势跟随
-				_this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transform'] = 'translateY(' + (st + delta) + 'px)';
+				_this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transform'] = 'translate3d(0,' + (st + delta) + 'px,0)';
 			}
 			else{
 				//计算拖动位移
 				delta = e_point.x - s_point.x;
+				if(_this.isDragging === false && delta !== 0){
+					_this.isDragging = true;
+				}
 				if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
 					return;
 				}
 				//手势跟随
-				_this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transform'] = 'translateX(' + (st + delta) + 'px)';
+				_this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transform'] = 'translate3d(' + (st + delta) + 'px,0,0)';
 			}
+			
 		});
 		this.stage.addEventListener('touchend',function(e){
 			e.preventDefault();
 			_this._stopBubble(e);
-			if(_this.lock)
+			_this.end_time = Date.now();
+			//判断是否在动画中，如果是则阻止后续代码的执行
+			if(_this.lock){
 				return;
+			}
+			//如果没有发生拖拽则不执行后续的代码
+			if(!_this.isDragging){
+				return;
+			}
+			console.log(_this.end_time);
 			//保存手指所在的点的坐标
 			e_point.x = e.changedTouches[0].pageX;
 			e_point.y = e.changedTouches[0].pageY;
@@ -152,6 +175,7 @@ Pager.prototype = {
 				}
 				//给容器添加moving类，切屏
 			}
+			_this.isDragging = false;
 			_this._scroll(_this.page_index,_this.beforeScroll,_this.afterScroll);
 		});
 	},
@@ -178,11 +202,11 @@ Pager.prototype = {
 	_initItems : function(){
 		this._getBrowserInfo();
 		
-		//初始化舞台、容器及每一页的dom的宽高
-		this.stage.style.cssText = 'position:fixed;left:0;top:0;width:'+ this.stage_width +'px;height:'+this.stage_heihgt+'px;overflow:hidden;';
+		//初始化舞台、容器及每一页的dom的宽高，background-visibility用来取出chrome下的闪动
+		this.stage.style.cssText = 'position:relative;width:'+ this.stage_width +'px;height:'+this.stage_heihgt+'px;overflow:hidden;'+this.prefixes[this.ptype]+'backface-visibility: hidden;';
 		if(!this.hMove){
 			//this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';width:100%;height:'+this.max*this.stage_heihgt+'px';
-			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);width:100%;height:'+this.max*this.stage_heihgt+'px';
+			this.wrapper.style.cssText = 'position:relative;'+this.prefixes[this.ptype]+'transform:translateY(0);width:100%;height:'+this.max*this.stage_heihgt+'px';
 			for(var i=0;i<this.max;i++){
 				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;left:0;top:'+i*this.window_height+'px';
 			}
@@ -215,7 +239,7 @@ Pager.prototype = {
             if(afterScroll){
             	afterScroll(_this.page_index);
             }
-            _this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transition'] = '';
+            _this.wrapper.style[_this.preStyleName[_this.ptype] + 'Transition'] = '0';
             _this.lock = false;
         },this.duration);
 	},
