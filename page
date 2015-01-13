@@ -34,7 +34,7 @@ var Pager = function(param){
 	this.beforeScroll = param.beforeScroll || null;
 	this.afterScroll = param.afterScroll || null;
 	//拖动的最大临界值
-	this.delta = param.delta || 30;
+	this.delta = param.delta || 80;
 	//切屏动画时间
 	this.duration = param.duration || 300;
 	//是否允许触摸时间冒泡
@@ -55,11 +55,10 @@ var Pager = function(param){
 		x : 0,
 		y : 0
 	};
-	//moving时的标志
-	this.isDragging = false;
 	//moving时的lock锁，在moving的时候滑动都失效
 	this.lock = false;
-
+	//记录是否为按住滑动
+	this.isMoving = false;
 	//存储浏览器类型的对应情况
 	this.prefixes = {
 		msie : "-ms-",
@@ -91,8 +90,9 @@ Pager.prototype = {
 		this.stage.addEventListener('touchstart',function(e){
 			e.preventDefault();
 			_this._stopBubble(e);
+			
 			_this.start_time = Date.now();
-			console.log(_this.start_time);
+
 			if(_this.lock)
 				return;
 			//保存按下点的坐标
@@ -105,6 +105,8 @@ Pager.prototype = {
 		this.stage.addEventListener('touchmove',function(e){
 			e.preventDefault();
 			_this._stopBubble(e);
+			_this.isMoving = true;
+
 			if(_this.lock){
 				return;
 			}
@@ -116,9 +118,6 @@ Pager.prototype = {
 			if(!_this.hMove){
 				//计算拖动位移
 				delta = e_point.y - s_point.y;
-				if(_this.isDragging === false && delta !== 0){
-					_this.isDragging = true;
-				}
 				if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
 					return;
 				 }
@@ -128,9 +127,6 @@ Pager.prototype = {
 			else{
 				//计算拖动位移
 				delta = e_point.x - s_point.x;
-				if(_this.isDragging === false && delta !== 0){
-					_this.isDragging = true;
-				}
 				if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
 					return;
 				}
@@ -143,26 +139,30 @@ Pager.prototype = {
 			e.preventDefault();
 			_this._stopBubble(e);
 			_this.end_time = Date.now();
+
 			//判断是否在动画中，如果是则阻止后续代码的执行
-			if(_this.lock){
+			if(_this.lock || !_this.isMoving){
+				_this.isMoving = false;
 				return;
 			}
-			//如果没有发生拖拽则不执行后续的代码
-			if(!_this.isDragging){
-				return;
-			}
-			console.log(_this.end_time);
 			//保存手指所在的点的坐标
 			e_point.x = e.changedTouches[0].pageX;
 			e_point.y = e.changedTouches[0].pageY;
+
 			var delta;
+
 			if(!_this.hMove){
 				delta = e_point.y - s_point.y;
 			}else{
 				delta = e_point.x - s_point.x;
 			}
+			if(delta === 0){
+				_this.isMoving = false;
+				return;
+			}
 			//边界判断
 			if(delta > 0 && _this.page_index === 1 || delta < 0 && _this.page_index === _this.max){
+				_this.isMoving = false;
 				return;
 			}
 			//拖动距离超过临界距离
@@ -175,7 +175,7 @@ Pager.prototype = {
 				}
 				//给容器添加moving类，切屏
 			}
-			_this.isDragging = false;
+			_this.isMoving = false;
 			_this._scroll(_this.page_index,_this.beforeScroll,_this.afterScroll);
 		});
 	},
