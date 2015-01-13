@@ -90,7 +90,7 @@ Pager.prototype = {
 		this.stage.addEventListener('touchstart',function(e){
 			e.preventDefault();
 			_this._stopBubble(e);
-			
+
 			_this.start_time = Date.now();
 
 			if(_this.lock)
@@ -205,16 +205,18 @@ Pager.prototype = {
 		//初始化舞台、容器及每一页的dom的宽高，background-visibility用来取出chrome下的闪动
 		this.stage.style.cssText = 'position:relative;width:'+ this.stage_width +'px;height:'+this.stage_heihgt+'px;overflow:hidden;'+this.prefixes[this.ptype]+'backface-visibility: hidden;';
 		if(!this.hMove){
+			//垂直方向
 			//this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';width:100%;height:'+this.max*this.stage_heihgt+'px';
-			this.wrapper.style.cssText = 'position:relative;'+this.prefixes[this.ptype]+'transform:translateY(0);width:100%;height:'+this.max*this.stage_heihgt+'px';
+			this.wrapper.style.cssText = this.prefixes[this.ptype]+'transform:translate3d(0,0,0);width:100%;height:'+this.max*this.stage_heihgt+'px;';
 			for(var i=0;i<this.max;i++){
-				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;left:0;top:'+i*this.window_height+'px';
+				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;';
 			}
 		}else{
+			//水平方向
 			//this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateX(0);'+this.prefixes[this.ptype]+'transition:all '+this.duration/1000+'s '+this.animFunc+';height:100%;width:'+this.stage_width+'px';
-			this.wrapper.style.cssText = 'position:absolute;left:0;top:0;'+this.prefixes[this.ptype]+'transform:translateY(0);width:100%;height:'+this.max*this.stage_heihgt+'px';
+			this.wrapper.style.cssText = this.prefixes[this.ptype]+'transform:translate3d(0,0,0);width:'+this.max*this.stage_width+'px;height:'+this.stage_heihgt+'px;';
 			for(var i=0;i<this.max;i++){
-				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;position:absolute;top:0;left:'+i*this.window_width+'px';
+				this.items[i].style.cssText = 'width:'+this.window_width+'px;height:'+this.window_height+'px;float:left;';
 			}
 		}
 	},
