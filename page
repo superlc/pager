@@ -83,7 +83,7 @@ var Pager = function(param){
 Pager.prototype = {
 	_init : function(){
 		this._initItems();
-		var st = this._getTransform(this.wrapper);
+		var st = this._getTransform(this);
 		var s_point = this.s_point;
 		var e_point = this.e_point;
 		var _this = this;
@@ -100,7 +100,7 @@ Pager.prototype = {
 			s_point.y = e.touches[0].pageY;
 
 			//预想本次会产生移动，获取触摸时的translateY值
-			st = _this._getTransform(_this.wrapper);
+			st = _this._getTransform(_this);
 		});
 		this.stage.addEventListener('touchmove',function(e){
 			e.preventDefault();
@@ -179,6 +179,7 @@ Pager.prototype = {
 			_this._scroll(_this.page_index,_this.beforeScroll,_this.afterScroll);
 		});
 	},
+	/*
 	_getTransform : function(dom){
 		//获取元素的应用的样式的值
 		//var styles = window.getComputedStyle(dom,null);
@@ -186,6 +187,10 @@ Pager.prototype = {
 		//取出样式传中的数值
 		var stop = (scn.match(/-?\d+/g) || [0]).pop();
 		return parseInt(stop);
+	},
+	*/
+	_getTransform : function(_this){
+		return _this.hMove ? (1-_this.page_index) * _this.window_width : (1-_this.page_index) * _this.window_height;
 	},
 	_getBrowserInfo : function(){
 		var info = window.navigator.userAgent.toLowerCase();
